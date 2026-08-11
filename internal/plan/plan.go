@@ -1,6 +1,9 @@
 package plan
 
 import (
+	"encoding/json"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -77,4 +80,93 @@ type Plan struct {
 	Totals       Totals     `json:"totals"`
 	Conflicts    []Conflict `json:"conflicts"`
 	Actions      []Action   `json:"actions"`
+}
+
+func (p *Plan) Normalize() {
+	if p.PlanVersion == 0 {
+		p.PlanVersion = PlanVersion
+	}
+
+	p.Now = p.Now.UTC()
+
+	if p.Conflicts == nil {
+		p.Conflicts = []Conflict{}
+	}
+
+	if p.Actions == nil {
+		p.Actions = []Action{}
+	}
+
+	for i := range p.Conflicts {
+		if p.Conflicts[i].Policies == nil {
+			p.Conflicts[i].Policies = []string{}
+		}
+		sort.Strings(p.Conflicts[i].Policies)
+	}
+
+	sort.Slice(p.Conflicts, func(i, j int) bool {
+		if p.Conflicts[i].Path != p.Conflicts[j].Path {
+			return p.Conflicts[i].Path < p.Conflicts[j].Path
+		}
+		return p.Conflicts[i].Message < p.Conflicts[j].Message
+	})
+
+	sort.SliceStable(p.Actions, func(i, j int) bool {
+		return lessAction(p.Actions[i], p.Actions[j])
+	})
+
+	for i := range p.Actions {
+		if len(p.Actions[i].Reason.Facts) == 0 {
+			p.Actions[i].Reason.Facts = nil
+		}
+	}
+}
+
+func MarshalPlanJSON(p Plan) ([]byte, error) {
+	p.Normalize()
+
+	b, err := json.MarshalIndent(p, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+
+	return append(b, '\n'), nil
+}
+
+func lessAction(a, b Action) bool {
+	if a.Policy != b.Policy {
+		return a.Policy < b.Policy
+	}
+
+	aRetention := isRetentionAction(a)
+	bRetention := isRetentionAction(b)
+	if aRetention != bRetention {
+		return !aRetention
+	}
+
+	if a.Group != b.Group {
+		return a.Group < b.Group
+	}
+
+	if a.Source != b.Source {
+		return a.Source < b.Source
+	}
+
+	return actionRank(a.Kind) < actionRank(b.Kind)
+}
+
+// true, если действие это удаление архива
+func isRetentionAction(a Action) bool {
+	return a.Kind == KindDelete && strings.HasPrefix(a.Reason.Code, "retention_")
+}
+
+func actionRank(kind string) int {
+	switch kind {
+	case KindArchive:
+		return 0
+	case KindDelete:
+		return 1
+	default:
+		return 2
+	}
 }
