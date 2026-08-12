@@ -18,6 +18,7 @@ func TestParseDuration(t *testing.T) {
 		{"45s", 45 * time.Second, false},
 		{"1d", 24 * time.Hour, false},
 		{"0s", 0, false},
+		{"0", 0, false},
 
 		// ошибки
 		{"", 0, true},        // пусто

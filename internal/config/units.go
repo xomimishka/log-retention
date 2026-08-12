@@ -16,6 +16,10 @@ func ParseDuration(s string) (time.Duration, error) {
 		return 0, fmt.Errorf("duration %q: negative value", s)
 	}
 
+	if s == "0" {
+		return 0, nil
+	}
+
 	numStr, suffix := splitNumber(s)
 	if numStr == "" {
 		return 0, fmt.Errorf("duration %q: missing number", s)
@@ -54,6 +58,11 @@ func ParseSize(s string) (int64, error) {
 	}
 	if strings.HasPrefix(s, "-") {
 		return 0, fmt.Errorf("size %q: negative value", s)
+	}
+
+	// ноль разрешён, чтобы min_age: 0 можно было записать
+	if s == "0" {
+		return 0, nil
 	}
 
 	numStr, suffix := splitNumber(s)
