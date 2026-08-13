@@ -1,12 +1,14 @@
 package config
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -62,18 +64,53 @@ func Load(path string) (*Config, error) {
 	cfg := &Config{}
 	switch strings.ToLower(filepath.Ext(path)) {
 	case ".yaml", ".yml":
-		if err := yaml.Unmarshal(data, cfg); err != nil {
-			return nil, fmt.Errorf("parse yaml: %w", err)
+		if err := loadYAMLStrict(data, cfg); err != nil {
+			return nil, err
 		}
 	case ".json":
-		if err := json.Unmarshal(data, cfg); err != nil {
-			return nil, fmt.Errorf("parse json: %w", err)
+		if err := loadJSONStrict(data, cfg); err != nil {
+			return nil, err
 		}
 	default:
 		return nil, fmt.Errorf("unsupported config extension: %q", filepath.Ext(path))
 	}
 
-	return cfg, validate(cfg)
+	if err := validate(cfg); err != nil {
+		return nil, err
+	}
+	if err := Resolve(cfg); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+func loadYAMLStrict(data []byte, cfg *Config) error {
+	var root yaml.Node
+	if err := yaml.Unmarshal(data, &root); err != nil {
+		return fmt.Errorf("parse yaml: %w", err)
+	}
+
+	errs := &Errors{}
+	checkYAMLNode(&root, "", reflect.TypeOf(Config{}), errs)
+	if errs.Len() > 0 {
+		return errs.Err()
+	}
+
+	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
+		if err := root.Content[0].Decode(cfg); err != nil {
+			return fmt.Errorf("decode yaml: %w", err)
+		}
+	}
+	return nil
+}
+
+func loadJSONStrict(data []byte, cfg *Config) error {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(cfg); err != nil {
+		return fmt.Errorf("parse json: %w", err)
+	}
+	return nil
 }
 
 func validate(cfg *Config) error {
@@ -82,7 +119,6 @@ func validate(cfg *Config) error {
 	if cfg.Version != 1 {
 		errs.Add(fmt.Errorf("config: unsupported version %d, expected 1", cfg.Version))
 	}
-
 	if len(cfg.Policies) == 0 {
 		errs.Add(errors.New("config: policies must not be empty"))
 	}
@@ -90,7 +126,6 @@ func validate(cfg *Config) error {
 	seen := make(map[string]int, len(cfg.Policies))
 	for i := range cfg.Policies {
 		p := &cfg.Policies[i]
-
 		if p.Name == "" {
 			errs.Add(fmt.Errorf("config: policies[%d].name is required", i))
 			continue
