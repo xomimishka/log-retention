@@ -71,6 +71,7 @@ func resolvePolicy(p *Policy, defaults map[string]string, errs *Errors) {
 	}
 
 	validatePolicyPaths(p, errs)
+	validatePolicyFields(p, errs)
 }
 
 func validatePolicyPaths(p *Policy, errs *Errors) {

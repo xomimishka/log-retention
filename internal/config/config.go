@@ -1,5 +1,9 @@
 package config
 
+import (
+	"time"
+)
+
 type Config struct {
 	Version  int      `yaml:"version" json:"version"`
 	Vars     Vars     `yaml:"vars,omitempty" json:"vars,omitempty"`
@@ -36,6 +40,9 @@ type Select struct {
 	MinAge          string `yaml:"min_age,omitempty" json:"min_age,omitempty"`
 	MinSize         string `yaml:"min_size,omitempty" json:"min_size,omitempty"`
 	KeepGenerations int    `yaml:"keep_generations,omitempty" json:"keep_generations,omitempty"`
+
+	MinAgeDur  time.Duration `yaml:"-" json:"-"`
+	MinSizeVal int64         `yaml:"-" json:"-"`
 }
 
 type Schedule struct {
@@ -57,4 +64,7 @@ type Retention struct {
 	MaxCount     int    `yaml:"max_count,omitempty" json:"max_count,omitempty"`
 	MaxTotalSize string `yaml:"max_total_size,omitempty" json:"max_total_size,omitempty"`
 	KeepMin      int    `yaml:"keep_min,omitempty" json:"keep_min,omitempty"`
+
+	MaxAgeDur       time.Duration `yaml:"-" json:"-"`
+	MaxTotalSizeVal int64         `yaml:"-" json:"-"`
 }
