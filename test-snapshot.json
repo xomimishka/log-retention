@@ -1,0 +1,30 @@
+{
+    "version": 1,
+    "now": "2026-08-17T12:00:00Z",
+    "roots": [
+        "/var/log"
+    ],
+    "files": [
+        {
+            "path": "/var/log/app.log",
+            "size": 100,
+            "mod_time": "2026-08-17T11:00:00Z",
+            "is_dir": false,
+            "symlink": false
+        },
+        {
+            "path": "/var/log/app.log.1",
+            "size": 100,
+            "mod_time": "2026-08-16T10:00:00Z",
+            "is_dir": false,
+            "symlink": false
+        },
+        {
+            "path": "/var/log/app.log.2",
+            "size": 100,
+            "mod_time": "2026-08-15T10:00:00Z",
+            "is_dir": false,
+            "symlink": false
+        }
+    ]
+}

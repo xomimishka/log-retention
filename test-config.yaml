@@ -1,0 +1,9 @@
+version: 1
+policies:
+  - name: demo
+    roots: ["/var/log"]
+    group:
+      by: name
+    select:
+      min_age: 24h
+    after_archive: delete
