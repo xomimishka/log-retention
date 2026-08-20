@@ -2,6 +2,7 @@ package plan
 
 import (
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -46,13 +47,14 @@ type Reason struct {
 
 // Action описывает одну операцию плана.
 type Action struct {
-	Kind   string `json:"kind"`
-	Policy string `json:"policy"`
-	Group  string `json:"group,omitempty"`
-	Source string `json:"source"`
-	Target string `json:"target,omitempty"`
-	Size   int64  `json:"size"`
-	Reason Reason `json:"reason"`
+	Kind    string    `json:"kind"`
+	Policy  string    `json:"policy"`
+	Group   string    `json:"group,omitempty"`
+	Source  string    `json:"source"`
+	Target  string    `json:"target,omitempty"`
+	Size    int64     `json:"size"`
+	ModTime time.Time `json:"mod_time,omitempty"`
+	Reason  Reason    `json:"reason"`
 }
 
 // Totals — сводка по плану.
@@ -169,4 +171,16 @@ func actionRank(kind string) int {
 	default:
 		return 2
 	}
+}
+
+func ParsePlanJSON(data []byte) (Plan, error) {
+	var p Plan
+	if err := json.Unmarshal(data, &p); err != nil {
+		return Plan{}, err
+	}
+	if p.PlanVersion != PlanVersion {
+		return Plan{}, fmt.Errorf("unsupported plan version: %d", p.PlanVersion)
+	}
+	p.Normalize()
+	return p, nil
 }

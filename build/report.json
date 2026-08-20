@@ -1,0 +1,35 @@
+{
+  "report_version": 1,
+  "params": {
+    "config": "test-apply-config.yaml",
+    "plan": "build\\plan.json",
+    "dry_run": false,
+    "ignore_window": false,
+    "max_deletions": 1000
+  },
+  "totals": {
+    "archived": 1,
+    "deleted": 1,
+    "skipped": 0,
+    "stale": 0,
+    "failed": 0,
+    "bytes_written": 36,
+    "bytes_freed": 36
+  },
+  "warnings": [],
+  "actions": [
+    {
+      "kind": "archive",
+      "policy": "demo",
+      "source": "/tmp/lrt-demo/app.log.1",
+      "target": "/tmp/lrt-demo/archive/{group}-{date}.zip",
+      "status": "done"
+    },
+    {
+      "kind": "delete",
+      "policy": "demo",
+      "source": "/tmp/lrt-demo/app.log.1",
+      "status": "done"
+    }
+  ]
+}

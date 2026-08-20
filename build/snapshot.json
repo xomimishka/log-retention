@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "now": "2026-08-20T10:50:13.5617335Z",
+  "roots": [
+    "/tmp/lrt-demo"
+  ],
+  "files": [
+    {
+      "path": "/tmp/lrt-demo",
+      "size": 0,
+      "mod_time": "2026-08-20T10:50:07.1977228Z",
+      "is_dir": true,
+      "symlink": false
+    },
+    {
+      "path": "/tmp/lrt-demo/app.log.1",
+      "size": 36,
+      "mod_time": "2026-08-20T10:50:07.1997222Z",
+      "is_dir": false,
+      "symlink": false
+    }
+  ]
+}

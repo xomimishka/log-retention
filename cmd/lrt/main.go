@@ -14,6 +14,7 @@ import (
 
 	"example/log-retention/internal/atomicfile"
 	"example/log-retention/internal/config"
+	"example/log-retention/internal/execute"
 	"example/log-retention/internal/fsmodel"
 	"example/log-retention/internal/plan"
 	"example/log-retention/internal/policy"
@@ -337,12 +338,98 @@ func runExplain(ctx context.Context, args []string) error {
 }
 
 func runApply(ctx context.Context, args []string) error {
-	_ = ctx
 	fs := flag.NewFlagSet("apply", flag.ExitOnError)
-	fs.String("plan", "", "path to plan JSON")
-	fs.Bool("dry-run", false, "do not modify disk")
+	planPath := fs.String("plan", "", "path to plan JSON (required)")
+	outPath := fs.String("out", "", "path to output report JSON (stdout if empty)")
+	dryRun := fs.Bool("dry-run", false, "perform checks but do not modify disk")
+	maxDeletions := fs.Int("max-deletions", 1000, "maximum number of deletions per run")
+	maxPlanAge := fs.Duration("max-plan-age", time.Hour, "maximum age of the plan")
+	force := fs.Bool("force", false, "ignore plan age limit")
+	ignoreWindow := fs.Bool("ignore-window", false, "ignore schedule window")
 	fs.Parse(args)
-	return fmt.Errorf("command 'apply' is not implemented yet")
+
+	if *planPath == "" {
+		return fmt.Errorf("--plan is required")
+	}
+
+	planData, err := os.ReadFile(*planPath)
+	if err != nil {
+		return fmt.Errorf("read plan: %w", err)
+	}
+	p, err := plan.ParsePlanJSON(planData)
+	if err != nil {
+		return fmt.Errorf("parse plan: %w", err)
+	}
+
+	if !*force {
+		age := time.Since(p.Now)
+		if age > *maxPlanAge {
+			return &exitCodeError{code: 2, err: fmt.Errorf(
+				"plan is too old: %s (max-plan-age %s), use --force to override",
+				age, *maxPlanAge)}
+		}
+	}
+
+	if p.Config == "" {
+		return fmt.Errorf("plan does not reference a config file")
+	}
+	cfg, err := config.Load(p.Config)
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
+	}
+	if err := config.Resolve(cfg); err != nil {
+		return fmt.Errorf("resolve config: %w", err)
+	}
+
+	if p.ConfigSHA256 != "" {
+		cfgData, err := os.ReadFile(p.Config)
+		if err != nil {
+			return fmt.Errorf("read config for hash: %w", err)
+		}
+		cfgSHA := sha256.Sum256(cfgData)
+		cfgSHAHex := hex.EncodeToString(cfgSHA[:])
+		if cfgSHAHex != p.ConfigSHA256 {
+			return &exitCodeError{code: 2, err: fmt.Errorf(
+				"plan was built from a different config: SHA-256 mismatch")}
+		}
+	}
+
+	opts := execute.Options{
+		DryRun:       *dryRun,
+		MaxDeletions: *maxDeletions,
+		ConfigPath:   p.Config,
+		PlanPath:     *planPath,
+		IgnoreWindow: *ignoreWindow,
+	}
+	report, err := execute.Execute(ctx, &p, cfg, opts)
+	if err != nil {
+		return err
+	}
+
+	reportData, err := execute.MarshalReportJSON(*report)
+	if err != nil {
+		return fmt.Errorf("marshal report: %w", err)
+	}
+
+	if *outPath != "" {
+		if err := atomicfile.WriteBytes(*outPath, reportData); err != nil {
+			return fmt.Errorf("write report: %w", err)
+		}
+		fmt.Fprintf(os.Stderr, "report written to %s\n", *outPath)
+	} else {
+		os.Stdout.Write(reportData)
+	}
+
+	fmt.Fprintf(os.Stderr, "apply: %d archived, %d deleted, %d skipped, %d stale, %d failed\n",
+		report.Totals.Archived, report.Totals.Deleted, report.Totals.Skipped,
+		report.Totals.Stale, report.Totals.Failed)
+
+	if report.Totals.Stale > 0 || report.Totals.Failed > 0 {
+		return &exitCodeError{code: 1, err: fmt.Errorf(
+			"%d stale, %d failed actions", report.Totals.Stale, report.Totals.Failed)}
+	}
+
+	return nil
 }
 
 func runVerify(ctx context.Context, args []string) error {

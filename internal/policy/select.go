@@ -91,12 +91,13 @@ func skipAction(p config.Policy, group string, f fsmodel.FileInfo, code, message
 
 func archiveAction(p config.Policy, group string, f fsmodel.FileInfo, age time.Duration) plan.Action {
 	return plan.Action{
-		Kind:   plan.KindArchive,
-		Policy: p.Name,
-		Group:  group,
-		Source: f.Path,
-		Target: archiveTarget(p, group, f),
-		Size:   f.Size,
+		Kind:    plan.KindArchive,
+		Policy:  p.Name,
+		Group:   group,
+		Source:  f.Path,
+		Target:  archiveTarget(p, group, f),
+		Size:    f.Size,
+		ModTime: f.ModTime,
 		Reason: plan.Reason{
 			Code:    plan.ReasonMinAgeReached,
 			Message: fmt.Sprintf("file passed selection (age=%s, size=%d)", age, f.Size),
@@ -110,11 +111,12 @@ func archiveAction(p config.Policy, group string, f fsmodel.FileInfo, age time.D
 
 func deleteAction(p config.Policy, group string, f fsmodel.FileInfo, age time.Duration) plan.Action {
 	return plan.Action{
-		Kind:   plan.KindDelete,
-		Policy: p.Name,
-		Group:  group,
-		Source: f.Path,
-		Size:   f.Size,
+		Kind:    plan.KindDelete,
+		Policy:  p.Name,
+		Group:   group,
+		Source:  f.Path,
+		Size:    f.Size,
+		ModTime: f.ModTime,
 		Reason: plan.Reason{
 			Code:    plan.ReasonAfterArchiveDelete,
 			Message: fmt.Sprintf("delete source after successful archive (age=%s)", age),
@@ -126,6 +128,7 @@ func deleteAction(p config.Policy, group string, f fsmodel.FileInfo, age time.Du
 }
 
 func archiveTarget(p config.Policy, group string, _ fsmodel.FileInfo) string {
+	_ = group
 	dest := p.Archive.Dest
 	if dest == "" {
 		dest = "/tmp/archive"

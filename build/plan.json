@@ -1,0 +1,48 @@
+{
+  "plan_version": 1,
+  "now": "2026-08-20T12:00:00Z",
+  "config": "test-apply-config.yaml",
+  "config_sha256": "1cbba36120a755b020ac1cdd023fb240463cefa36af52fa36548d612cd32d012",
+  "totals": {
+    "archive": 1,
+    "delete": 1,
+    "skip": 0,
+    "bytes_to_archive": 36,
+    "bytes_to_free": 36
+  },
+  "conflicts": [],
+  "actions": [
+    {
+      "kind": "archive",
+      "policy": "demo",
+      "group": "app",
+      "source": "/tmp/lrt-demo/app.log.1",
+      "target": "/tmp/lrt-demo/archive/{group}-{date}.zip",
+      "size": 36,
+      "mod_time": "2026-08-20T10:50:07.1997222Z",
+      "reason": {
+        "code": "min_age_reached",
+        "message": "file passed selection (age=1h9m52.8002778s, size=36)",
+        "facts": {
+          "age": "1h9m52.8002778s",
+          "size": "36"
+        }
+      }
+    },
+    {
+      "kind": "delete",
+      "policy": "demo",
+      "group": "app",
+      "source": "/tmp/lrt-demo/app.log.1",
+      "size": 36,
+      "mod_time": "2026-08-20T10:50:07.1997222Z",
+      "reason": {
+        "code": "after_archive_delete",
+        "message": "delete source after successful archive (age=1h9m52.8002778s)",
+        "facts": {
+          "age": "1h9m52.8002778s"
+        }
+      }
+    }
+  ]
+}

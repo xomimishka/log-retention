@@ -1,0 +1,12 @@
+version: 1
+policies:
+  - name: demo
+    roots: ["/tmp/lrt-demo"]
+    group:
+      by: name
+    select:
+      min_age: 1h
+    archive:
+      dest: "/tmp/lrt-demo/archive"
+      name: "{group}-{date}.zip"
+    after_archive: delete
