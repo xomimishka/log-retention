@@ -36,6 +36,7 @@ const (
 	ReasonFutureMtime         = "future_mtime"
 	ReasonExcluded            = "excluded"
 	ReasonNoPolicy            = "no_policy"
+	ReasonLocked              = "locked"
 )
 
 // Reason объясняет, почему действие попало в план.
@@ -73,15 +74,22 @@ type Conflict struct {
 	Policies []string `json:"policies"`
 }
 
+type Warning struct {
+	Kind    string `json:"kind"`
+	Message string `json:"message"`
+	Target  string `json:"target,omitempty"`
+}
+
 // Plan — упорядоченный список действий, построенный по снимку и конфигурации.
 type Plan struct {
 	PlanVersion  int        `json:"plan_version"`
 	Now          time.Time  `json:"now"`
 	Config       string     `json:"config"`
-	ConfigSHA256 string     `json:"config_sha256,omitempty"`
+	ConfigSHA256 string     `json:"config_sha256"`
 	Totals       Totals     `json:"totals"`
 	Conflicts    []Conflict `json:"conflicts"`
 	Actions      []Action   `json:"actions"`
+	Warnings     []Warning  `json:"warnings,omitempty"`
 }
 
 func (p *Plan) Normalize() {

@@ -74,6 +74,31 @@ func BuildPlan(now time.Time, snap fsmodel.Snapshot, cfg *config.Config) (*plan.
 		}
 	}
 
+	newlyCreatedArchives := make(map[string]bool)
+	for _, a := range result.Actions {
+		if a.Kind == plan.KindArchive && a.Target != "" {
+			newlyCreatedArchives[a.Target] = true
+		}
+	}
+
+	for _, p := range cfg.Policies {
+		retentionResult, err := ApplyRetention(now, p, newlyCreatedArchives)
+		if err != nil {
+			return nil, err
+		}
+
+		// Добавляем предупреждения.
+		for _, w := range retentionResult.Warnings {
+			result.Warnings = append(result.Warnings, plan.Warning{
+				Kind:    "retention",
+				Message: w,
+			})
+		}
+
+		// Добавляем действия удаления архивов.
+		result.Actions = append(result.Actions, retentionResult.ToDelete...)
+	}
+
 	for _, f := range snap.Files {
 		if f.Symlink {
 			result.Actions = append(result.Actions, plan.Action{

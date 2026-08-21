@@ -65,7 +65,7 @@ func decideFileActions(now time.Time, p config.Policy, group string, f fsmodel.F
 			})}
 	}
 
-	actions := []plan.Action{archiveAction(p, group, f, age)}
+	actions := []plan.Action{archiveAction(now, p, group, f, age)}
 
 	if p.AfterArchive == "delete" {
 		actions = append(actions, deleteAction(p, group, f, age))
@@ -89,13 +89,14 @@ func skipAction(p config.Policy, group string, f fsmodel.FileInfo, code, message
 	}
 }
 
-func archiveAction(p config.Policy, group string, f fsmodel.FileInfo, age time.Duration) plan.Action {
+func archiveAction(now time.Time, p config.Policy, group string, f fsmodel.FileInfo, age time.Duration) plan.Action {
+	target := RenderArchiveTarget(p, group, now)
 	return plan.Action{
 		Kind:    plan.KindArchive,
 		Policy:  p.Name,
 		Group:   group,
 		Source:  f.Path,
-		Target:  archiveTarget(p, group, f),
+		Target:  target,
 		Size:    f.Size,
 		ModTime: f.ModTime,
 		Reason: plan.Reason{
@@ -137,5 +138,5 @@ func archiveTarget(p config.Policy, group string, _ fsmodel.FileInfo) string {
 	if name == "" {
 		name = "{group}-{date}.zip"
 	}
-	return fmt.Sprintf("%s/%s", dest, name)
+	return RenderArchiveTarget(p, group, time.Now().UTC())
 }

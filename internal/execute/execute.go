@@ -2,9 +2,11 @@ package execute
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"example/log-retention/internal/archive"
@@ -101,6 +103,12 @@ func executeArchive(action plan.Action, cfg *config.Config, opts Options, archiv
 	}
 
 	if err := checkFileUnchanged(action.Source, action.Size, action.ModTime); err != nil {
+		var locked *LockedError
+		if errors.As(err, &locked) {
+			result.Status = StatusLocked
+			result.Error = err.Error()
+			return result
+		}
 		result.Status = StatusStale
 		result.Error = err.Error()
 		return result
@@ -209,11 +217,23 @@ func executeDelete(action plan.Action, cfg *config.Config, opts Options, archive
 }
 
 func checkFileUnchanged(path string, expectedSize int64, expectedModTime time.Time) error {
-	info, err := os.Stat(filepath.FromSlash(path))
+	diskPath := filepath.FromSlash(path)
+
+	file, err := os.Open(diskPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("file disappeared")
 		}
+
+		if isLockError(err) {
+			return &LockedError{Path: path, Err: err}
+		}
+		return fmt.Errorf("open: %w", err)
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil {
 		return fmt.Errorf("stat: %w", err)
 	}
 	if info.Size() != expectedSize {
@@ -225,6 +245,31 @@ func checkFileUnchanged(path string, expectedSize int64, expectedModTime time.Ti
 			expectedModTime.UTC().Format(time.RFC3339))
 	}
 	return nil
+}
+
+type LockedError struct {
+	Path string
+	Err  error
+}
+
+func (e *LockedError) Error() string {
+	return fmt.Sprintf("file locked: %s: %v", e.Path, e.Err)
+}
+
+func isLockError(err error) bool {
+	errStr := err.Error()
+	// Windows-специфичные ошибки блокировки.
+	if strings.Contains(errStr, "being used by another process") ||
+		strings.Contains(errStr, "sharing violation") ||
+		strings.Contains(errStr, "locked") {
+		return true
+	}
+	// На Linux проверяем EACCES и EBUSY.
+	if strings.Contains(errStr, "permission denied") ||
+		strings.Contains(errStr, "device or resource busy") {
+		return true
+	}
+	return false
 }
 
 func findPolicy(cfg *config.Config, name string) config.Policy {
